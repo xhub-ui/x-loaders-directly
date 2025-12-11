@@ -20,15 +20,15 @@ local mouse = player:GetMouse()
 -- CONFIG
 local HubName = "XuKrost Hub"
 local CreatorText = "noirexe"
-local Version = "v4.8 VIP Manager"
+local Version = "v4.8 Updated"
 
 -- URL Configurations
-local VIP_MODULE_URL = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/hlpers/vip_helper.lua" 
-local KEY_LIST_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders/refs/heads/main/loader/redirects/free-keys/key.txt"
-local HELPER_URL = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/hlpers/helper.lua" 
+local VIP_MODULE_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/utils/vip_helper.lua" 
+local KEY_LIST_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/main-settings/direct-url-settings/key.txt"
+local HELPER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/utils/helper.lua" 
 
 -- :: VIP SETTINGS ::
-local VIP_MODE = "json" -- Select Mode: "json" or "txt" 
+local VIP_MODE = "txt" -- Select Mode: "json" or "txt" 
 
 -- Variables
 local isVIP = false
