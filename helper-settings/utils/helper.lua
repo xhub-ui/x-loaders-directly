@@ -4,8 +4,8 @@
 local Helper = {}
 
 -- [[ KONFIGURASI LINK ]] --
-local LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/logger.lua" 
-local FEATURE_URL = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/hlpers/feature-manager.lua" 
+local LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/logger.lua" 
+local FEATURE_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/modules/feature-manager.lua" 
 
 -- [[ SAFETY LOADING DEPENDENCIES ]] --
 local function safeLoad(url)
