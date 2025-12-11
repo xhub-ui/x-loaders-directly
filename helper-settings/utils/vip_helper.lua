@@ -15,7 +15,7 @@ local VIP_DATA_URLS = {
     ["json"] = "https://raw.githubusercontent.com/username/repo/main/vip_user.json",
     
     -- Masukkan Link untuk file .txt
-    ["txt"]  = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/main-settings/direct-url-settings/vip_users.txt"
+    ["txt"]  = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/main-settings/direct-url-settings/vip_users.txt"
 }
 -- =================================================================
 
