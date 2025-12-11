@@ -23,9 +23,9 @@ local CreatorText = "noirexe"
 local Version = "v4.8 Updated"
 
 -- URL Configurations
-local VIP_MODULE_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/utils/vip_helper.lua" 
-local KEY_LIST_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/main-settings/direct-url-settings/key.txt"
-local HELPER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/utils/helper.lua" 
+local VIP_MODULE_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/helper-settings/utils/vip_helper.lua" 
+local KEY_LIST_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/main-settings/direct-url-settings/key.txt"
+local HELPER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/helper-settings/utils/helper.lua" 
 
 -- :: VIP SETTINGS ::
 local VIP_MODE = "txt" -- Select Mode: "json" or "txt" 
