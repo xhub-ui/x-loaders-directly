@@ -10,7 +10,7 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- [[ KONFIGURASI LINK ]] --
-local LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/logger.lua"
+local LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/helper-settings/logger.lua"
 
 -- Safe Load Logger
 local success, Logger = pcall(function() return loadstring(game:HttpGet(LOGGER_URL))() end)
@@ -25,11 +25,11 @@ FeatureManager.IsAutoTeleporting = false
 FeatureManager.ScriptLibrary = {
     -- [MAPS]
     ["Mount Blonde"] = {
-        Url = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/main-map/Coor-Mt-Blonde.lua",
+        Url = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/main-maps/mt-coor-scripts/Coor-Mt-Blonde.lua",
         VipOnly = false
     },
     ["Mount Sakahayang"] = {
-        Url = "https://raw.githubusercontent.com/xhub-ui/frg/refs/heads/main/main-map/Coor-Mt-Sakahayang.lua", 
+        Url = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/main/main-maps/mt-coor-scripts/Coor-Mt-Sakahayang.lua", 
         VipOnly = false
     },
     ["Mount Malang (VIP)"] = {
