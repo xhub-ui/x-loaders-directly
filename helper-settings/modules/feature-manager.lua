@@ -1,27 +1,46 @@
 -- feature-manager.lua
--- Updated for XuKrost Hub v4.8
--- Optimized Teleport & Execution Logic
+-- Combined & Updated for XuKrost Hub
+-- Includes: Audio Engine + Optimized Teleport & Execution Logic
 
 local FeatureManager = {}
+
+-- [[ SERVICES ]] --
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+local CoreGui = game:GetService("CoreGui")
+
 local player = Players.LocalPlayer
 
--- [[ KONFIGURASI LINK ]] --
-local LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/helper-settings/logger.lua"
+-- [[ KONFIGURASI LINK (URLS) ]] --
+local CONFIG = {
+    LOGGER_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/helper-settings/logger.lua",
+    MUSIC_LIST_URL = "https://raw.githubusercontent.com/xhub-ui/x-loaders-directly/refs/heads/main/main-settings/direct-ui-settings/music-list.lua" -- GANTI dengan link raw github musik anda
+}
 
--- Safe Load Logger
-local success, Logger = pcall(function() return loadstring(game:HttpGet(LOGGER_URL))() end)
+-- [[ LOGGER SYSTEM ]] --
+local success, Logger = pcall(function() return loadstring(game:HttpGet(CONFIG.LOGGER_URL))() end)
 if not success or not Logger then 
     Logger = {Log = function(...) warn("[Logger Fail]", ...) end}
 end
 
--- :: CONFIGURATION ::
-FeatureManager.IsAutoTeleporting = false
+-- [[ AUDIO ENGINE SETUP ]] --
+local SoundObj = Instance.new("Sound")
+SoundObj.Name = "XuKrostAudio"
+SoundObj.Volume = 1
+SoundObj.Looped = false
+SoundObj.Parent = SoundService
 
--- :: DATA REPOSITORY ::
+-- [[ STATE VARIABLES ]] --
+FeatureManager.IsAutoTeleporting = false
+FeatureManager.CurrentMusicIndex = 1
+FeatureManager.MusicQueue = {}
+FeatureManager.IsPlaying = false
+
+-- [[ DATA REPOSITORY (MAPS & SCRIPTS) ]] --
 FeatureManager.ScriptLibrary = {
     -- [MAPS]
     ["Mount Blonde"] = {
@@ -38,7 +57,6 @@ FeatureManager.ScriptLibrary = {
     },
     
     -- [SCRIPTS / EXECUTORS]
-    -- Tambahkan Type = "Execute" untuk script biasa (bukan map)
     ["Free Script (Noirexe)"] = {
         Url = "https://raw.githubusercontent.com/noirexe/GYkHTrZSc5W/refs/heads/main/sc-free-ko-dijual-awoakowk.lua",
         Type = "Execute", 
@@ -46,7 +64,78 @@ FeatureManager.ScriptLibrary = {
     }
 }
 
--- :: CORE FUNCTIONS ::
+-- =========================================================================
+-- [[ SECTION 1: AUDIO SYSTEM FUNCTIONS ]]
+-- =========================================================================
+
+function FeatureManager.FetchMusicList()
+    Logger.Log("Load", "Fetching Music List...")
+    local success, data = pcall(function()
+        return loadstring(game:HttpGet(CONFIG.MUSIC_LIST_URL))()
+    end)
+    if success and data then
+        FeatureManager.MusicQueue = data
+        Logger.Log("Success", "Music List Loaded: " .. #data .. " songs.")
+        return true, data
+    else
+        Logger.Log("Error", "Failed to load music list.")
+        return false, {}
+    end
+end
+
+function FeatureManager.PlayMusic(index)
+    local song = FeatureManager.MusicQueue[index]
+    if song then
+        SoundObj.SoundId = "rbxassetid://" .. song.ID
+        SoundObj:Play()
+        FeatureManager.CurrentMusicIndex = index
+        FeatureManager.IsPlaying = true
+        return true, song
+    end
+    return false, nil
+end
+
+function FeatureManager.ToggleMusic()
+    if SoundObj.IsPlaying then
+        SoundObj:Pause()
+        FeatureManager.IsPlaying = false
+    else
+        SoundObj:Resume()
+        FeatureManager.IsPlaying = true
+    end
+    return FeatureManager.IsPlaying
+end
+
+function FeatureManager.NextMusic()
+    local nextIndex = FeatureManager.CurrentMusicIndex + 1
+    if nextIndex > #FeatureManager.MusicQueue then nextIndex = 1 end
+    return FeatureManager.PlayMusic(nextIndex)
+end
+
+function FeatureManager.PrevMusic()
+    local prevIndex = FeatureManager.CurrentMusicIndex - 1
+    if prevIndex < 1 then prevIndex = #FeatureManager.MusicQueue end
+    return FeatureManager.PlayMusic(prevIndex)
+end
+
+function FeatureManager.Seek(percent)
+    if SoundObj.TimeLength > 0 then
+        SoundObj.TimePosition = SoundObj.TimeLength * percent
+    end
+end
+
+function FeatureManager.GetPlaybackInfo()
+    return {
+        Position = SoundObj.TimePosition,
+        Length = SoundObj.TimeLength,
+        IsPlaying = SoundObj.IsPlaying,
+        CurrentSong = FeatureManager.MusicQueue[FeatureManager.CurrentMusicIndex]
+    }
+end
+
+-- =========================================================================
+-- [[ SECTION 2: CORE & TELEPORT FUNCTIONS ]]
+-- =========================================================================
 
 function FeatureManager.ResetCharacter()
     if player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -97,8 +186,7 @@ function FeatureManager.StartAutoTeleport(checkpoints, sequence, delayTime)
                     Logger.Log("Load", "Traveling to: " .. pointName)
                     FeatureManager.TeleportTo(pointData)
                     
-                    -- LOGIKA RESPAWN (Updated)
-                    -- Mendeteksi kata "puncak" ATAU flag khusus 'ResetChar' dari file koordinat
+                    -- LOGIKA RESPAWN
                     local isPuncak = string.find(string.lower(pointName), "puncak")
                     local shouldReset = pointData.ResetChar or isPuncak
 
