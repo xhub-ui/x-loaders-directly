@@ -1245,6 +1245,25 @@ local function spawnMainHub()
         UpgradeBtn.Text = "Upgrade to VIP Script"
     end)
 
+    -- ===================================
+    -- :: TAB: MUSIC PLAYERS (NEW) ::
+    -- ===================================
+    local PageMusic = CreatePage("Music Players")
+    
+    -- Load Helper untuk Music
+    -- Pastikan HELPER_URL Anda memuat file helper.txt yang sudah diupdate diatas
+    local successHelper, MusicHelper = pcall(function()
+        return loadstring(game:HttpGet(HELPER_URL))()
+    end)
+    
+    if successHelper and MusicHelper and MusicHelper.BuildMusicTab then
+        MusicHelper.BuildMusicTab(PageMusic)
+    else
+        local errLbl = Instance.new("TextLabel", PageMusic)
+        errLbl.Size = UDim2.new(1,0,0,30)
+        errLbl.Text = "Failed to load Music Player Module"
+        errLbl.TextColor3 = Color3.fromRGB(255,0,0)
+    end
 
     -- ===================================
     -- :: TAB 2: MAIN SCRIPTS (MODULAR UPDATED) ::
