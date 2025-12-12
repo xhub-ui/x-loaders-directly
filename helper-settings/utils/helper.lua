@@ -1,5 +1,5 @@
 -- helper.lua
--- Updated for XuKrost Hub v4.8 (VIP & Safety Update)
+-- Updated for XuKrost Hub v4.8 (VIP, Safety & Music Update)
 
 local Helper = {}
 
@@ -19,15 +19,16 @@ local function safeLoad(url)
     return nil
 end
 
-local Logger = safeLoad(LOGGER_URL) or {Log = function(...) print(...) end} -- Fallback dummy
-local FeatureManager = safeLoad(FEATURE_URL) or { -- Fallback dummy to prevent crash
+local Logger = safeLoad(LOGGER_URL) or {Log = function(...) print(...) end} 
+local FeatureManager = safeLoad(FEATURE_URL) or { -- Fallback dummy
     ScriptLibrary = {}, 
     LoadCoordinateFile = function() return false end,
-    StopAutoTeleport = function() end
+    StopAutoTeleport = function() end,
+    FetchMusicList = function() return false, {} end,
+    GetPlaybackInfo = function() return {IsPlaying=false, Length=0, Position=0} end
 }
 
 -- [[ THEME CONSTANTS ]] --
--- Disarankan samakan warna ini dengan Main Script Anda
 local UI_COLOR = Color3.fromRGB(65, 120, 200) 
 local CARD_COLOR = Color3.fromRGB(35, 35, 40)
 local INPUT_BG = Color3.fromRGB(25, 25, 30)
@@ -50,7 +51,9 @@ local function createStroke(parent, color, thickness)
     return stroke
 end
 
--- [[ MAIN BUILD FUNCTION ]] --
+-- ==========================================================
+-- FEATURE: MAIN TAB (Executor, Maps, Tools)
+-- ==========================================================
 function Helper.BuildMainTab(ParentFrame, isPlayerVip)
     -- 1. Safety & Cleanup
     if FeatureManager.StopAutoTeleport then
@@ -59,21 +62,23 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
 
     -- 2. Reset UI
     for _, v in pairs(ParentFrame:GetChildren()) do
-        if v:IsA("Frame") or v:IsA("ScrollingFrame") or v:IsA("UIListLayout") or v:IsA("UIPadding") or v:IsA("TextLabel") then 
-            v:Destroy() 
-        end
+        if not v:IsA("UIListLayout") and not v:IsA("UIPadding") then v:Destroy() end
     end
     
-    -- Setup Layout
-    local Layout = Instance.new("UIListLayout", ParentFrame)
-    Layout.SortOrder = Enum.SortOrder.LayoutOrder
-    Layout.Padding = UDim.new(0, 8)
+    -- Setup Layout jika belum ada
+    if not ParentFrame:FindFirstChildOfClass("UIListLayout") then
+        local Layout = Instance.new("UIListLayout", ParentFrame)
+        Layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Layout.Padding = UDim.new(0, 8)
+    end
     
-    local Padding = Instance.new("UIPadding", ParentFrame)
-    Padding.PaddingTop = UDim.new(0, 5)
-    Padding.PaddingLeft = UDim.new(0, 5)
-    Padding.PaddingRight = UDim.new(0, 5)
-    Padding.PaddingBottom = UDim.new(0, 35) -- Extra padding for bottom tools
+    if not ParentFrame:FindFirstChildOfClass("UIPadding") then
+        local Padding = Instance.new("UIPadding", ParentFrame)
+        Padding.PaddingTop = UDim.new(0, 5)
+        Padding.PaddingLeft = UDim.new(0, 5)
+        Padding.PaddingRight = UDim.new(0, 5)
+        Padding.PaddingBottom = UDim.new(0, 35)
+    end
 
     -- 3. DATA PREPARATION
     local mapNames = {}
@@ -98,9 +103,7 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
         end
     end
 
-    -- ==========================================================
     -- SECTION 1: EXECUTE SCRIPTS
-    -- ==========================================================
     if #ExecuteItems > 0 then
         local ExecTitle = Instance.new("TextLabel", ParentFrame)
         ExecTitle.Size = UDim2.new(1, 0, 0, 20)
@@ -115,7 +118,6 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
         for _, item in ipairs(ExecuteItems) do
             local name = item.name
             local data = item.data
-            -- VIP Logic: Check if script is VIP Only AND Player is NOT VIP
             local isVipLocked = (data.VipOnly == true and not isPlayerVip)
 
             local ScriptCard = Instance.new("Frame", ParentFrame)
@@ -183,9 +185,7 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
         Sep.LayoutOrder = 3
     end
 
-    -- ==========================================================
     -- SECTION 2: MAPS (DROPDOWN)
-    -- ==========================================================
     if #DropdownItems > 0 then
         local MapHeader = Instance.new("Frame", ParentFrame)
         MapHeader.Size = UDim2.new(1, -5, 0, 40)
@@ -256,7 +256,6 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
             createCorner(MapItemBtn, 4)
 
             MapItemBtn.MouseButton1Click:Connect(function()
-                -- Stop loop saat ganti map
                 if FeatureManager.StopAutoTeleport then FeatureManager.StopAutoTeleport() end
                 
                 Helper.LoadMapUI(ControlContainer, name, isPlayerVip)
@@ -275,7 +274,7 @@ function Helper.BuildMainTab(ParentFrame, isPlayerVip)
         end)
     end
 
-    -- 4. Footer Tools
+    -- Footer Tools
     Helper.CreateGlobalTools(ParentFrame)
 end
 
@@ -441,6 +440,291 @@ function Helper.CreateGlobalTools(ParentFrame)
 
     HopBtn.MouseButton1Click:Connect(function() if FeatureManager.ServerHop then FeatureManager.ServerHop() end end)
     RejoinBtn.MouseButton1Click:Connect(function() if FeatureManager.Rejoin then FeatureManager.Rejoin() end end)
+end
+
+-- ==========================================================
+-- FEATURE: MUSIC PLAYER TAB
+-- ==========================================================
+function Helper.BuildMusicTab(ParentFrame)
+    -- Bersihkan Frame
+    for _, v in pairs(ParentFrame:GetChildren()) do 
+        if not v:IsA("UIListLayout") and not v:IsA("UIPadding") then v:Destroy() end 
+    end
+
+    -- :: MAIN CARD ::
+    local MusicCard = Instance.new("Frame", ParentFrame)
+    MusicCard.Size = UDim2.new(1, -5, 0, 180) -- Tinggi card
+    MusicCard.BackgroundColor3 = CARD_COLOR
+    MusicCard.BackgroundTransparency = 0.2
+    MusicCard.LayoutOrder = 1
+    createCorner(MusicCard, 10)
+    createStroke(MusicCard, UI_COLOR, 1)
+
+    -- :: LAYOUT SPLIT (Left: List, Right: Player) ::
+    
+    -- LEFT PANEL (List)
+    local LeftPanel = Instance.new("Frame", MusicCard)
+    LeftPanel.Size = UDim2.new(0.4, -5, 1, -10)
+    LeftPanel.Position = UDim2.new(0, 5, 0, 5)
+    LeftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    LeftPanel.BackgroundTransparency = 0.5
+    createCorner(LeftPanel, 6)
+
+    -- Search Bar
+    local SearchBar = Instance.new("TextBox", LeftPanel)
+    SearchBar.Size = UDim2.new(1, -10, 0, 25)
+    SearchBar.Position = UDim2.new(0, 5, 0, 5)
+    SearchBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    SearchBar.PlaceholderText = "Search Song..."
+    SearchBar.Text = ""
+    SearchBar.TextColor3 = TEXT_COLOR
+    SearchBar.Font = Enum.Font.Gotham
+    SearchBar.TextSize = 11
+    createCorner(SearchBar, 4)
+
+    -- Scroll List
+    local SongList = Instance.new("ScrollingFrame", LeftPanel)
+    SongList.Size = UDim2.new(1, -5, 1, -35)
+    SongList.Position = UDim2.new(0, 2, 0, 35)
+    SongList.BackgroundTransparency = 1
+    SongList.ScrollBarThickness = 2
+    SongList.ScrollBarImageColor3 = UI_COLOR
+    
+    local ListLayout = Instance.new("UIListLayout", SongList)
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ListLayout.Padding = UDim.new(0, 2)
+
+    -- Status Label
+    local StatusLbl = Instance.new("TextLabel", SongList)
+    StatusLbl.Size = UDim2.new(1, 0, 0, 20)
+    StatusLbl.BackgroundTransparency = 1
+    StatusLbl.Text = "Loading..."
+    StatusLbl.TextColor3 = TEXT_DIM
+    StatusLbl.Font = Enum.Font.Gotham
+    StatusLbl.TextSize = 11
+
+    -- RIGHT PANEL (Player Control)
+    local RightPanel = Instance.new("Frame", MusicCard)
+    RightPanel.Size = UDim2.new(0.6, -10, 1, -10)
+    RightPanel.Position = UDim2.new(0.4, 5, 0, 5)
+    RightPanel.BackgroundTransparency = 1
+
+    -- Cover Art (Visual Only)
+    local Cover = Instance.new("ImageLabel", RightPanel)
+    Cover.Size = UDim2.new(0, 80, 0, 80)
+    Cover.Position = UDim2.new(0.5, 0, 0, 10)
+    Cover.AnchorPoint = Vector2.new(0.5, 0)
+    Cover.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    Cover.Image = "rbxassetid://9072338006" -- Generic Vinyl Icon
+    createCorner(Cover, 8)
+
+    -- Song Title
+    local SongTitle = Instance.new("TextLabel", RightPanel)
+    SongTitle.Size = UDim2.new(1, 0, 0, 20)
+    SongTitle.Position = UDim2.new(0, 0, 0, 95)
+    SongTitle.BackgroundTransparency = 1
+    SongTitle.Text = "No Song Playing"
+    SongTitle.TextColor3 = TEXT_COLOR
+    SongTitle.Font = Enum.Font.GothamBold
+    SongTitle.TextSize = 14
+    SongTitle.TextTruncate = Enum.TextTruncate.AtEnd
+
+    -- Artist Name
+    local ArtistName = Instance.new("TextLabel", RightPanel)
+    ArtistName.Size = UDim2.new(1, 0, 0, 15)
+    ArtistName.Position = UDim2.new(0, 0, 0, 115)
+    ArtistName.BackgroundTransparency = 1
+    ArtistName.Text = "Select a song"
+    ArtistName.TextColor3 = TEXT_DIM
+    ArtistName.Font = Enum.Font.Gotham
+    ArtistName.TextSize = 11
+
+    -- Slider System
+    local SliderBg = Instance.new("TextButton", RightPanel) -- Button for click seeking
+    SliderBg.Size = UDim2.new(0.9, 0, 0, 4)
+    SliderBg.Position = UDim2.new(0.05, 0, 0, 140)
+    SliderBg.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    SliderBg.Text = ""
+    SliderBg.AutoButtonColor = false
+    createCorner(SliderBg, 2)
+
+    local SliderFill = Instance.new("Frame", SliderBg)
+    SliderFill.Size = UDim2.new(0, 0, 1, 0)
+    SliderFill.BackgroundColor3 = UI_COLOR
+    createCorner(SliderFill, 2)
+
+    local TimeLabel = Instance.new("TextLabel", RightPanel)
+    TimeLabel.Size = UDim2.new(1, 0, 0, 15)
+    TimeLabel.Position = UDim2.new(0, 0, 0, 145)
+    TimeLabel.BackgroundTransparency = 1
+    TimeLabel.Text = "00:00 / 00:00"
+    TimeLabel.TextColor3 = TEXT_DIM
+    TimeLabel.Font = Enum.Font.Code
+    TimeLabel.TextSize = 10
+
+    -- Controls (Prev, Play/Pause, Next)
+    local Controls = Instance.new("Frame", RightPanel)
+    Controls.Size = UDim2.new(1, 0, 0, 30)
+    Controls.Position = UDim2.new(0, 0, 1, -30)
+    Controls.BackgroundTransparency = 1
+
+    local PlayPauseBtn -- Forward declaration
+
+    local function UpdatePlayPauseIcon(isPlaying)
+        if PlayPauseBtn then
+            PlayPauseBtn.Text = isPlaying and "||" or "▶"
+        end
+    end
+
+    local function UpdatePlayerUI(song)
+        if not song then return end
+        SongTitle.Text = song.Name
+        ArtistName.Text = song.Artist
+        UpdatePlayPauseIcon(true)
+        -- Reset Slider visual instant
+        SliderFill.Size = UDim2.new(0, 0, 1, 0)
+    end
+
+    local function createCtrlBtn(text, xPos, sizeX, callback)
+        local btn = Instance.new("TextButton", Controls)
+        btn.Size = UDim2.new(sizeX, 0, 1, 0)
+        btn.Position = UDim2.new(xPos, 0, 0, 0)
+        btn.AnchorPoint = Vector2.new(0.5, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        btn.Text = text
+        btn.TextColor3 = TEXT_COLOR
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        createCorner(btn, 6)
+        btn.MouseButton1Click:Connect(callback)
+        return btn
+    end
+
+    local PrevBtn = createCtrlBtn("<<", 0.2, 0.2, function()
+        if FeatureManager.PrevMusic then
+            local s, song = FeatureManager.PrevMusic()
+            if s then UpdatePlayerUI(song) end
+        end
+    end)
+
+    PlayPauseBtn = createCtrlBtn("▶", 0.5, 0.3, function() 
+        if FeatureManager.ToggleMusic then
+            local isPlaying = FeatureManager.ToggleMusic()
+            UpdatePlayPauseIcon(isPlaying)
+        end
+    end)
+    PlayPauseBtn.BackgroundColor3 = UI_COLOR -- Highlight Play Button
+
+    local NextBtn = createCtrlBtn(">>", 0.8, 0.2, function()
+        if FeatureManager.NextMusic then
+            local s, song = FeatureManager.NextMusic()
+            if s then UpdatePlayerUI(song) end
+        end
+    end)
+
+    -- Loop Logic for Slider & Time
+    task.spawn(function()
+        while MusicCard.Parent do
+            if FeatureManager.GetPlaybackInfo then
+                local info = FeatureManager.GetPlaybackInfo()
+                if info.IsPlaying and info.Length > 0 then
+                    local percent = info.Position / info.Length
+                    SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                    
+                    local currMin = math.floor(info.Position / 60)
+                    local currSec = math.floor(info.Position % 60)
+                    local totMin = math.floor(info.Length / 60)
+                    local totSec = math.floor(info.Length % 60)
+                    TimeLabel.Text = string.format("%02d:%02d / %02d:%02d", currMin, currSec, totMin, totSec)
+                    
+                    -- Auto Next if finished (simple check)
+                    if info.Length - info.Position < 0.5 then
+                        local s, song = FeatureManager.NextMusic()
+                        if s then UpdatePlayerUI(song) end
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+
+    -- Seek Logic
+    SliderBg.MouseButton1Click:Connect(function()
+        if FeatureManager.Seek then
+            local mouse = game.Players.LocalPlayer:GetMouse()
+            local relativeX = mouse.X - SliderBg.AbsolutePosition.X
+            local percent = math.clamp(relativeX / SliderBg.AbsoluteSize.X, 0, 1)
+            FeatureManager.Seek(percent)
+            SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        end
+    end)
+
+    -- Populate List
+    task.spawn(function()
+        if not FeatureManager.FetchMusicList then 
+            StatusLbl.Text = "Music Module Missing"
+            return 
+        end
+
+        local success, list = FeatureManager.FetchMusicList()
+        StatusLbl.Text = success and "Loaded!" or "Error Load"
+        task.wait(1)
+        StatusLbl.Visible = false
+        
+        if success then
+            local function renderList(filter)
+                -- Clear current list items (keep status lbl)
+                for _, child in pairs(SongList:GetChildren()) do
+                    if child:IsA("Frame") then child:Destroy() end
+                end
+                
+                local count = 0
+                for i, song in ipairs(list) do
+                    if not filter or string.find(string.lower(song.Name), string.lower(filter)) then
+                        count = count + 1
+                        local Item = Instance.new("Frame", SongList)
+                        Item.Size = UDim2.new(1, 0, 0, 25)
+                        Item.BackgroundTransparency = 1
+                        
+                        local PlaySmall = Instance.new("TextButton", Item)
+                        PlaySmall.Size = UDim2.new(0, 20, 0, 20)
+                        PlaySmall.Position = UDim2.new(0, 0, 0.1, 0)
+                        PlaySmall.BackgroundColor3 = Color3.fromRGB(45, 100, 50)
+                        PlaySmall.Text = "▶"
+                        PlaySmall.TextColor3 = Color3.new(1,1,1)
+                        PlaySmall.TextSize = 8
+                        createCorner(PlaySmall, 4)
+                        
+                        local Name = Instance.new("TextLabel", Item)
+                        Name.Size = UDim2.new(1, -25, 1, 0)
+                        Name.Position = UDim2.new(0, 25, 0, 0)
+                        Name.BackgroundTransparency = 1
+                        Name.Text = song.Name
+                        Name.TextColor3 = TEXT_DIM
+                        Name.Font = Enum.Font.Gotham
+                        Name.TextSize = 10
+                        Name.TextXAlignment = Enum.TextXAlignment.Left
+                        Name.TextTruncate = Enum.TextTruncate.AtEnd
+                        
+                        PlaySmall.MouseButton1Click:Connect(function()
+                            if FeatureManager.PlayMusic then
+                                local s, playingSong = FeatureManager.PlayMusic(i)
+                                if s then UpdatePlayerUI(playingSong) end
+                            end
+                        end)
+                    end
+                end
+                SongList.CanvasSize = UDim2.new(0, 0, 0, count * 27)
+            end
+            
+            renderList(nil) -- Initial Render
+            
+            -- Search Logic
+            SearchBar:GetPropertyChangedSignal("Text"):Connect(function()
+                renderList(SearchBar.Text)
+            end)
+        end
+    end)
 end
 
 return Helper
